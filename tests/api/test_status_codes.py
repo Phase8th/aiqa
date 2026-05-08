@@ -41,5 +41,11 @@ def test_status_endpoint_returns_requested_code(http_lab_api, status_code):
         else:
             body = response.json()
             allure.attach(str(body), f"Ответ /status/{status_code}", allure.attachment_type.TEXT)
-            assert body["status"] == status_code
-            assert body["category"].startswith(f"{status_code // 100}xx")
+            assert set(body) >= {"description", "qa_note", "category"}
+            returned_code = body.get("code", body.get("status"))
+            returned_name = body.get("name", body.get("title"))
+            assert returned_code == status_code
+            assert isinstance(returned_name, str) and returned_name
+            assert body["category"].startswith(f"{status_code // 100}")
+            assert isinstance(body["description"], str) and body["description"]
+            assert isinstance(body["qa_note"], str) and body["qa_note"]

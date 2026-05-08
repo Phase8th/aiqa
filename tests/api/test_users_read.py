@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE
+from tests.conftest import API_EPIC, API_FEATURE, assert_user_contract
 
 
 pytestmark = pytest.mark.api
@@ -24,9 +24,13 @@ def test_get_user_by_id_returns_created_user(http_lab_api, create_api_user):
     with allure.step("Проверить статус 200 и данные пользователя"):
         assert response.status == 200
         body = response.json()
-        assert body["id"] == user["id"]
-        assert body["name"] == "Read User"
-        assert body["role"] == "editor"
+        assert_user_contract(
+            body,
+            expected_id=user["id"],
+            expected_name="Read User",
+            expected_email=user["email"],
+            expected_role="editor",
+        )
 
 
 @allure.epic(API_EPIC)

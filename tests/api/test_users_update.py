@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE
+from tests.conftest import API_EPIC, API_FEATURE, assert_user_contract, request_json
 
 
 pytestmark = pytest.mark.api
@@ -20,15 +20,45 @@ def test_put_user_replaces_all_fields(http_lab_api, create_api_user):
 
     payload = {"name": "After Put", "email": "after-put@example.ru", "role": "admin"}
     with allure.step("Отправить PUT /users/{id}"):
-        response = http_lab_api.put(f"users/{user['id']}", data=payload)
+        response = request_json(http_lab_api, "PUT", f"users/{user['id']}", payload)
 
     with allure.step("Проверить статус 200 и заменённые поля"):
         assert response.status == 200
         body = response.json()
-        assert body["id"] == user["id"]
-        assert body["name"] == payload["name"]
-        assert body["email"] == payload["email"]
-        assert body["role"] == payload["role"]
+        assert_user_contract(
+            body,
+            expected_id=user["id"],
+            expected_name=payload["name"],
+            expected_email=payload["email"],
+            expected_role=payload["role"],
+        )
+
+
+@allure.epic(API_EPIC)
+@allure.feature(API_FEATURE)
+@allure.story("Обновление пользователя")
+@allure.severity(allure.severity_level.CRITICAL)
+@allure.title("PUT /users/{id} без role сбрасывает роль в значение по умолчанию")
+@allure.description("Проверяем документированное поведение полного обновления без необязательного поля role.")
+def test_put_user_without_role_resets_default_role(http_lab_api, create_api_user):
+    with allure.step("Подготовить пользователя с ролью admin"):
+        user = create_api_user(name="Before Put Default Role", role="admin")
+        allure.dynamic.parameter("user_id", user["id"])
+
+    payload = {"name": "After Put Default Role", "email": "after-default@example.ru"}
+    with allure.step("Отправить PUT /users/{id} без role"):
+        response = request_json(http_lab_api, "PUT", f"users/{user['id']}", payload)
+
+    with allure.step("Проверить сброс role в viewer"):
+        assert response.status == 200
+        body = response.json()
+        assert_user_contract(
+            body,
+            expected_id=user["id"],
+            expected_name=payload["name"],
+            expected_email=payload["email"],
+            expected_role="viewer",
+        )
 
 
 @allure.epic(API_EPIC)
@@ -43,12 +73,33 @@ def test_patch_user_updates_only_name(http_lab_api, create_api_user):
         allure.dynamic.parameter("user_id", user["id"])
 
     with allure.step("Отправить PATCH /users/{id} только с name"):
-        response = http_lab_api.patch(f"users/{user['id']}", data={"name": "After Patch"})
+        response = request_json(http_lab_api, "PATCH", f"users/{user['id']}", {"name": "After Patch"})
 
     with allure.step("Проверить статус 200 и частичное обновление"):
         assert response.status == 200
         body = response.json()
-        assert body["id"] == user["id"]
-        assert body["name"] == "After Patch"
-        assert body["email"] == "before-patch@example.ru"
-        assert body["role"] == "editor"
+        assert_user_contract(
+            body,
+            expected_id=user["id"],
+            expected_name="After Patch",
+            expected_email="before-patch@example.ru",
+            expected_role="editor",
+        )
+
+
+@allure.epic(API_EPIC)
+@allure.feature(API_FEATURE)
+@allure.story("Обновление пользователя")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.title("PATCH /users/{id} возвращает 404 для несуществующего пользователя")
+@allure.description("Проверяем ошибку частичного обновления по несуществующему id.")
+def test_patch_missing_user_returns_404(http_lab_api):
+    missing_id = "missing-user-id"
+    allure.dynamic.parameter("user_id", missing_id)
+
+    with allure.step("Отправить PATCH /users/{id} для несуществующего пользователя"):
+        response = request_json(http_lab_api, "PATCH", f"users/{missing_id}", {"name": "No One"})
+
+    with allure.step("Проверить статус 404 и сообщение об ошибке"):
+        assert response.status == 404
+        assert response.json()["error"] == f"Пользователь {missing_id} не найден"

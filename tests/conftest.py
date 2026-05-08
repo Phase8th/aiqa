@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from datetime import datetime
 import uuid
 
 import pytest
@@ -43,11 +44,33 @@ def create_api_user(http_lab_api):
             "role": "viewer",
         }
         payload.update(overrides)
-        response = http_lab_api.post("users", data=payload)
+        response = request_json(http_lab_api, "POST", "users", payload)
         assert response.status == 201
         return response.json()
 
     return _create_user
+
+
+@pytest.fixture
+def new_http_lab_api_context(playwright, target_base_url):
+    contexts = []
+
+    def _new_context(*, session_header=None):
+        headers = {}
+        if session_header is not None:
+            headers["X-Course-Session"] = session_header
+
+        context = playwright.request.new_context(
+            base_url=f"{target_base_url}/api/course/v1/http-lab/",
+            extra_http_headers=headers or None,
+        )
+        contexts.append(context)
+        return context
+
+    yield _new_context
+
+    for context in contexts:
+        context.dispose()
 
 
 @pytest.fixture
@@ -93,6 +116,53 @@ def expect_response_status(page, status_code: int):
     with allure.step(f"Проверить статус {status_code} в панели запроса и ответа"):
         expect(panel).to_contain_text(f"{status_code}")
     return panel
+
+
+def parse_iso_datetime(value: str) -> datetime:
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def request_json(api_context, method: str, path: str, payload: dict):
+    return api_context.fetch(
+        path,
+        method=method,
+        data=json.dumps(payload, ensure_ascii=False),
+        headers={"Content-Type": "application/json"},
+    )
+
+
+def assert_user_contract(user: dict, *, expected_id=None, expected_name=None, expected_email=None, expected_role=None):
+    assert set(user).issuperset({"id", "name", "email", "role", "created_at"})
+    assert isinstance(user["id"], str) and user["id"]
+    assert isinstance(user["name"], str) and user["name"]
+    assert isinstance(user["email"], str) and "@" in user["email"]
+    assert user["role"] in {"viewer", "editor", "admin"}
+    assert parse_iso_datetime(user["created_at"])
+
+    if "updated_at" in user:
+        assert parse_iso_datetime(user["updated_at"]) >= parse_iso_datetime(user["created_at"])
+
+    if expected_id is not None:
+        assert user["id"] == expected_id
+    if expected_name is not None:
+        assert user["name"] == expected_name
+    if expected_email is not None:
+        assert user["email"] == expected_email
+    if expected_role is not None:
+        assert user["role"] == expected_role
+
+
+def assert_user_list_contract(body: dict, expected_session: str):
+    assert set(body) == {"items", "total", "session"}
+    assert body["session"] == expected_session
+    assert isinstance(body["items"], list)
+    assert body["total"] == len(body["items"])
+
+    seen_ids = set()
+    for user in body["items"]:
+        assert_user_contract(user)
+        assert user["id"] not in seen_ids
+        seen_ids.add(user["id"])
 
 
 def pytest_sessionfinish(session, exitstatus):

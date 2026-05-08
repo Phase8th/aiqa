@@ -45,3 +45,21 @@ def test_deleted_user_is_not_available(http_lab_api, create_api_user):
     with allure.step("Проверить статус 404"):
         assert response.status == 404
         assert response.json()["error"] == f"Пользователь {user['id']} не найден"
+
+
+@allure.epic(API_EPIC)
+@allure.feature(API_FEATURE)
+@allure.story("Удаление пользователя")
+@allure.severity(allure.severity_level.NORMAL)
+@allure.title("DELETE /users/{id} возвращает 404 для несуществующего пользователя")
+@allure.description("Проверяем удаление по id, которого нет в текущей сессии.")
+def test_delete_missing_user_returns_404(http_lab_api):
+    missing_id = "missing-user-id"
+    allure.dynamic.parameter("user_id", missing_id)
+
+    with allure.step("Отправить DELETE /users/{id} для несуществующего пользователя"):
+        response = http_lab_api.delete(f"users/{missing_id}")
+
+    with allure.step("Проверить статус 404 и сообщение об ошибке"):
+        assert response.status == 404
+        assert response.json()["error"] == f"Пользователь {missing_id} не найден"
