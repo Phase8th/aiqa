@@ -1,6 +1,4 @@
-# AIQA lesson 4 autotests
-
-Autotests for `https://aiqa.su/base/lesson-4` on Python, pytest and Playwright.
+# AIQA autotests
 
 ## Setup
 
