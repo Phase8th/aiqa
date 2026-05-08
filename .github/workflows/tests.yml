@@ -54,6 +54,22 @@ jobs:
           path: junit.xml
           if-no-files-found: warn
 
+      - name: Checkout gh-pages for Allure history
+        if: github.event_name != 'pull_request'
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: gh-pages
+
+      - name: Restore Allure history
+        if: github.event_name != 'pull_request'
+        run: |
+          if [ -d gh-pages/history ]; then
+            mkdir -p allure-results/history
+            cp -r gh-pages/history/. allure-results/history/
+          fi
+
       - name: Setup Java
         if: github.event_name != 'pull_request'
         uses: actions/setup-java@v4
@@ -69,10 +85,24 @@ jobs:
         if: github.event_name != 'pull_request'
         run: allure generate allure-results --clean -o allure-report
 
-      - name: Deploy to GitHub Pages
+      - name: Prepare report timestamp
+        if: github.event_name != 'pull_request'
+        run: echo "REPORT_STAMP=$(date -u +'%Y-%m-%d_%H-%M-%S_UTC')" >> "$GITHUB_ENV"
+
+      - name: Deploy latest report to gh-pages
         if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
           publish_dir: ./allure-report
+
+      - name: Deploy archived report to allure-report-history
+        if: github.event_name != 'pull_request'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: allure-report-history
+          publish_dir: ./allure-report
+          destination_dir: ${{ env.REPORT_STAMP }}
+          keep_files: true
