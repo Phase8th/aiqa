@@ -62,3 +62,22 @@ allure-results/  raw Allure results from pytest
 allure-report/   generated HTML report
 junit.xml        GitLab test report
 ```
+
+## GitHub Actions
+
+Workflow is configured in `.github/workflows/tests.yml`.
+
+It runs on:
+
+```text
+push to main
+pull request
+manual workflow_dispatch
+```
+
+Artifacts:
+
+```text
+allure-results/  raw Allure results
+junit.xml        JUnit test report
+```
