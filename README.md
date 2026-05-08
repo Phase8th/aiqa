@@ -1,0 +1,64 @@
+# AIQA lesson 4 autotests
+
+Autotests for `https://aiqa.su/base/lesson-4` on Python, pytest and Playwright.
+
+## Setup
+
+```powershell
+python -m pip install -r requirements.txt
+python -m playwright install chromium
+```
+
+## Run
+
+```powershell
+python -m pytest
+```
+
+Allure results are written to `allure-results` automatically. Generate the HTML report:
+
+```powershell
+allure generate allure-results --clean -o allure-report
+allure open allure-report
+```
+
+Optional target override:
+
+```powershell
+$env:AIQA_BASE_URL = "https://aiqa.su"
+python -m pytest
+```
+
+Markers:
+
+```powershell
+python -m pytest -m api
+python -m pytest -m ui
+```
+
+Test layout:
+
+```text
+tests/api/  API tests grouped by endpoint and action
+tests/ui/   UI tests grouped by page flow
+```
+
+## GitLab CI
+
+Pipeline is configured in `.gitlab-ci.yml`.
+
+Stages:
+
+```text
+test    installs Python dependencies, installs Chromium, runs pytest
+report  generates Allure HTML report from allure-results
+pages   publishes Allure report on GitLab Pages for the default branch
+```
+
+Artifacts:
+
+```text
+allure-results/  raw Allure results from pytest
+allure-report/   generated HTML report
+junit.xml        GitLab test report
+```

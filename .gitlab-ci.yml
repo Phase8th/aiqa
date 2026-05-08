@@ -1,0 +1,64 @@
+stages:
+  - test
+  - report
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  PLAYWRIGHT_BROWSERS_PATH: "$CI_PROJECT_DIR/.cache/ms-playwright"
+  AIQA_BASE_URL: "https://aiqa.su"
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .cache/pip/
+    - .cache/ms-playwright/
+
+pytest:
+  stage: test
+  image: python:3.13-slim
+  before_script:
+    - python --version
+    - python -m pip install --upgrade pip
+    - python -m pip install -r requirements.txt
+    - python -m playwright install --with-deps chromium
+  script:
+    - python -m pytest -q
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - allure-results/
+    reports:
+      junit: junit.xml
+
+allure-report:
+  stage: report
+  image:
+    name: frankescobar/allure-docker-service:2.27.0
+    entrypoint: [""]
+  needs:
+    - job: pytest
+      artifacts: true
+  script:
+    - allure generate allure-results --clean -o allure-report
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - allure-report/
+
+pages:
+  stage: report
+  image:
+    name: frankescobar/allure-docker-service:2.27.0
+    entrypoint: [""]
+  needs:
+    - job: pytest
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - allure generate allure-results --clean -o public
+  artifacts:
+    paths:
+      - public
