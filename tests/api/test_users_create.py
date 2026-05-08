@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE, assert_user_contract, request_json
+from tests.conftest import API_EPIC, API_FEATURE, assert_error_contract, assert_user_contract, request_json
 
 
 pytestmark = pytest.mark.api
@@ -128,6 +128,6 @@ def test_create_user_validation_errors(http_lab_api, case_name, payload, expecte
     with allure.step("Проверить статус 422 и сообщение об ошибке"):
         assert response.status == 422
         body = response.json()
-        assert isinstance(body["error"], str) and body["error"]
+        assert_error_contract(body)
         if expected_error is not None:
             assert body["error"] == expected_error

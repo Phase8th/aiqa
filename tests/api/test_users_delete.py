@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE
+from tests.conftest import API_EPIC, API_FEATURE, assert_error_contract
 
 
 pytestmark = pytest.mark.api
@@ -12,7 +12,7 @@ pytestmark = pytest.mark.api
 @allure.story("Удаление пользователя")
 @allure.severity(allure.severity_level.CRITICAL)
 @allure.title("DELETE /users/{id} удаляет пользователя и возвращает 204")
-@allure.description("Проверяем атомарно действие удаления пользователя.")
+@allure.description("Проверяем атомарное действие удаления пользователя.")
 def test_delete_user_returns_no_content(http_lab_api, create_api_user):
     with allure.step("Подготовить пользователя"):
         user = create_api_user(name="Delete User")
@@ -44,7 +44,9 @@ def test_deleted_user_is_not_available(http_lab_api, create_api_user):
 
     with allure.step("Проверить статус 404"):
         assert response.status == 404
-        assert response.json()["error"] == f"Пользователь {user['id']} не найден"
+        body = response.json()
+        assert_error_contract(body)
+        assert body["error"] == f"Пользователь {user['id']} не найден"
 
 
 @allure.epic(API_EPIC)
@@ -62,4 +64,6 @@ def test_delete_missing_user_returns_404(http_lab_api):
 
     with allure.step("Проверить статус 404 и сообщение об ошибке"):
         assert response.status == 404
-        assert response.json()["error"] == f"Пользователь {missing_id} не найден"
+        body = response.json()
+        assert_error_contract(body)
+        assert body["error"] == f"Пользователь {missing_id} не найден"

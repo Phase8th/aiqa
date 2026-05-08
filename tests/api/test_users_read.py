@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE, assert_user_contract
+from tests.conftest import API_EPIC, API_FEATURE, assert_error_contract, assert_user_contract
 
 
 pytestmark = pytest.mark.api
@@ -48,4 +48,6 @@ def test_get_missing_user_returns_404(http_lab_api):
 
     with allure.step("Проверить статус 404 и текст ошибки"):
         assert response.status == 404
-        assert response.json()["error"] == f"Пользователь {missing_id} не найден"
+        body = response.json()
+        assert_error_contract(body)
+        assert body["error"] == f"Пользователь {missing_id} не найден"

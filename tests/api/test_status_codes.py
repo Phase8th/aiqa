@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE
+from tests.conftest import API_EPIC, API_FEATURE, assert_status_code_contract
 
 
 pytestmark = pytest.mark.api
@@ -41,11 +41,4 @@ def test_status_endpoint_returns_requested_code(http_lab_api, status_code):
         else:
             body = response.json()
             allure.attach(str(body), f"Ответ /status/{status_code}", allure.attachment_type.TEXT)
-            assert set(body) >= {"description", "qa_note", "category"}
-            returned_code = body.get("code", body.get("status"))
-            returned_name = body.get("name", body.get("title"))
-            assert returned_code == status_code
-            assert isinstance(returned_name, str) and returned_name
-            assert body["category"].startswith(f"{status_code // 100}")
-            assert isinstance(body["description"], str) and body["description"]
-            assert isinstance(body["qa_note"], str) and body["qa_note"]
+            assert_status_code_contract(body, expected_status_code=status_code)

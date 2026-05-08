@@ -1,7 +1,7 @@
 import allure
 import pytest
 
-from tests.conftest import API_EPIC, API_FEATURE, assert_user_contract, request_json
+from tests.conftest import API_EPIC, API_FEATURE, assert_error_contract, assert_user_contract, request_json
 
 
 pytestmark = pytest.mark.api
@@ -22,7 +22,7 @@ def test_put_user_replaces_all_fields(http_lab_api, create_api_user):
     with allure.step("Отправить PUT /users/{id}"):
         response = request_json(http_lab_api, "PUT", f"users/{user['id']}", payload)
 
-    with allure.step("Проверить статус 200 и заменённые поля"):
+    with allure.step("Проверить статус 200 и замененные поля"):
         assert response.status == 200
         body = response.json()
         assert_user_contract(
@@ -102,4 +102,6 @@ def test_patch_missing_user_returns_404(http_lab_api):
 
     with allure.step("Проверить статус 404 и сообщение об ошибке"):
         assert response.status == 404
-        assert response.json()["error"] == f"Пользователь {missing_id} не найден"
+        body = response.json()
+        assert_error_contract(body)
+        assert body["error"] == f"Пользователь {missing_id} не найден"

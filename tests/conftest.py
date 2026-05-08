@@ -6,6 +6,7 @@ import uuid
 
 import pytest
 import allure
+from jsonschema import Draft202012Validator, FormatChecker
 from playwright.sync_api import expect
 
 
@@ -13,6 +14,72 @@ API_EPIC = "AIQA"
 API_FEATURE = "Урок 4: API HTTP-тренажёра"
 UI_EPIC = "AIQA"
 UI_FEATURE = "Урок 4: UI HTTP-тренажёра"
+
+
+USER_SCHEMA = {
+    "type": "object",
+    "required": ["id", "name", "email", "role", "created_at", "updated_at"],
+    "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1},
+        "email": {"type": "string", "format": "email"},
+        "role": {"type": "string", "enum": ["viewer", "editor", "admin"]},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+    },
+    "additionalProperties": False,
+}
+
+USER_LIST_SCHEMA = {
+    "type": "object",
+    "required": ["items", "total", "session"],
+    "properties": {
+        "items": {"type": "array", "items": USER_SCHEMA},
+        "total": {"type": "integer", "minimum": 0},
+        "session": {"type": "string", "minLength": 1, "maxLength": 128},
+    },
+    "additionalProperties": False,
+}
+
+ERROR_SCHEMA = {
+    "type": "object",
+    "required": ["error"],
+    "properties": {
+        "error": {"type": "string", "minLength": 1},
+    },
+    "additionalProperties": False,
+}
+
+STATUS_CODE_RESPONSE_SCHEMA = {
+    "oneOf": [
+        {
+            "type": "object",
+            "required": ["code", "name", "category", "description", "qa_note"],
+            "properties": {
+                "code": {"type": "integer"},
+                "name": {"type": "string", "minLength": 1},
+                "category": {"type": "string", "minLength": 1},
+                "description": {"type": "string", "minLength": 1},
+                "qa_note": {"type": "string", "minLength": 1},
+            },
+            "additionalProperties": False,
+        },
+        {
+            "type": "object",
+            "required": ["status", "title", "category", "description", "qa_note"],
+            "properties": {
+                "status": {"type": "integer"},
+                "title": {"type": "string", "minLength": 1},
+                "category": {"type": "string", "minLength": 1},
+                "description": {"type": "string", "minLength": 1},
+                "qa_note": {"type": "string", "minLength": 1},
+            },
+            "additionalProperties": False,
+        },
+    ]
+}
+
+FORMAT_CHECKER = FormatChecker()
 
 
 @pytest.fixture(scope="session")
@@ -122,6 +189,14 @@ def parse_iso_datetime(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def assert_payload_schema(payload: dict, schema: dict, *, schema_name: str):
+    validator = Draft202012Validator(schema, format_checker=FORMAT_CHECKER)
+    errors = sorted(validator.iter_errors(payload), key=lambda error: list(error.path))
+    assert not errors, f"{schema_name} schema validation failed: " + "; ".join(
+        f"{'/'.join(map(str, error.path)) or '<root>'}: {error.message}" for error in errors
+    )
+
+
 def request_json(api_context, method: str, path: str, payload: dict):
     return api_context.fetch(
         path,
@@ -132,15 +207,11 @@ def request_json(api_context, method: str, path: str, payload: dict):
 
 
 def assert_user_contract(user: dict, *, expected_id=None, expected_name=None, expected_email=None, expected_role=None):
-    assert set(user).issuperset({"id", "name", "email", "role", "created_at"})
+    assert_payload_schema(user, USER_SCHEMA, schema_name="User")
     assert isinstance(user["id"], str) and user["id"]
     assert isinstance(user["name"], str) and user["name"]
-    assert isinstance(user["email"], str) and "@" in user["email"]
-    assert user["role"] in {"viewer", "editor", "admin"}
     assert parse_iso_datetime(user["created_at"])
-
-    if "updated_at" in user:
-        assert parse_iso_datetime(user["updated_at"]) >= parse_iso_datetime(user["created_at"])
+    assert parse_iso_datetime(user["updated_at"]) >= parse_iso_datetime(user["created_at"])
 
     if expected_id is not None:
         assert user["id"] == expected_id
@@ -153,9 +224,8 @@ def assert_user_contract(user: dict, *, expected_id=None, expected_name=None, ex
 
 
 def assert_user_list_contract(body: dict, expected_session: str):
-    assert set(body) == {"items", "total", "session"}
+    assert_payload_schema(body, USER_LIST_SCHEMA, schema_name="UserListResponse")
     assert body["session"] == expected_session
-    assert isinstance(body["items"], list)
     assert body["total"] == len(body["items"])
 
     seen_ids = set()
@@ -163,6 +233,21 @@ def assert_user_list_contract(body: dict, expected_session: str):
         assert_user_contract(user)
         assert user["id"] not in seen_ids
         seen_ids.add(user["id"])
+
+
+def assert_error_contract(body: dict):
+    assert_payload_schema(body, ERROR_SCHEMA, schema_name="ErrorResponse")
+
+
+def assert_status_code_contract(body: dict, *, expected_status_code: int):
+    assert_payload_schema(body, STATUS_CODE_RESPONSE_SCHEMA, schema_name="StatusCodeResponse")
+    returned_code = body.get("code", body.get("status"))
+    returned_name = body.get("name", body.get("title"))
+    assert returned_code == expected_status_code
+    assert isinstance(returned_name, str) and returned_name
+    assert body["category"].startswith(f"{expected_status_code // 100}")
+    assert isinstance(body["description"], str) and body["description"]
+    assert isinstance(body["qa_note"], str) and body["qa_note"]
 
 
 def pytest_sessionfinish(session, exitstatus):
