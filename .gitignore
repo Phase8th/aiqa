@@ -4,3 +4,4 @@ __pycache__/
 allure-results/
 allure-report/
 junit.xml
+PROJECT_SUMMARY.local.md

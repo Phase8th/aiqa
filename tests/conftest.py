@@ -1,19 +1,19 @@
 import json
 import os
-from pathlib import Path
-from datetime import datetime
 import uuid
+from datetime import datetime
+from pathlib import Path
 
-import pytest
 import allure
+import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from playwright.sync_api import expect
 
 
 API_EPIC = "AIQA"
-API_FEATURE = "Урок 4: API HTTP-тренажёра"
+API_FEATURE = "Урок 4: API HTTP-тренажера"
 UI_EPIC = "AIQA"
-UI_FEATURE = "Урок 4: UI HTTP-тренажёра"
+UI_FEATURE = "Урок 4: UI HTTP-тренажера"
 
 
 USER_SCHEMA = {
@@ -145,7 +145,7 @@ def lesson_page(page, target_base_url, course_session):
     allure.dynamic.parameter("session", course_session)
     with allure.step("Открыть страницу урока 4"):
         page.goto(f"{target_base_url}/base/lesson-4")
-    with allure.step("Установить уникальную учебную сессию"):
+    with allure.step("Ввести уникальную учебную сессию"):
         page.get_by_placeholder("student-demo").fill(course_session)
     return page
 
@@ -154,10 +154,11 @@ def lesson_page(page, target_base_url, course_session):
 def create_user_via_ui(lesson_page):
     def _create_user(name="UI Autotest", email=None, role="viewer"):
         email = email or f"ui-{uuid.uuid4()}@example.ru"
-        with allure.step("Создать пользователя через форму"):
+        with allure.step("Ввести данные пользователя"):
             lesson_page.get_by_label("name *").fill(name)
             lesson_page.get_by_label("email *").fill(email)
             lesson_page.get_by_label("role").select_option(role)
+        with allure.step("Нажать POST /users"):
             with lesson_page.expect_response(
                 lambda response: response.url.endswith("/api/course/v1/http-lab/users")
             ):
@@ -168,18 +169,30 @@ def create_user_via_ui(lesson_page):
     return _create_user
 
 
-def attach_screenshot(page, name):
+def attach_screenshot(page, name, *, full_page=False):
     allure.attach(
-        page.screenshot(full_page=True),
+        page.screenshot(full_page=full_page),
         name,
         allure.attachment_type.PNG,
     )
 
 
-def expect_response_status(page, status_code: int):
-    panel = page.get_by_text("Анатомия запроса и ответа").locator(
+def attach_locator_screenshot(locator, name):
+    allure.attach(
+        locator.screenshot(),
+        name,
+        allure.attachment_type.PNG,
+    )
+
+
+def response_panel_locator(page):
+    return page.get_by_text("Анатомия запроса и ответа").locator(
         "xpath=ancestor::div[contains(@class, 'rounded-xl')][1]"
     )
+
+
+def expect_response_status(page, status_code: int):
+    panel = response_panel_locator(page)
     with allure.step(f"Проверить статус {status_code} в панели запроса и ответа"):
         expect(panel).to_contain_text(f"{status_code}")
     return panel
