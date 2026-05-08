@@ -1,61 +1,29 @@
-name: autotests
+name: Publish Allure
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Main Regression
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
-  tests:
+  publish:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
-    env:
-      AIQA_BASE_URL: https://aiqa.su
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Download Allure results artifact
+        uses: dawidd6/action-download-artifact@v6
         with:
-          python-version: "3.13"
-          cache: pip
-
-      - name: Install Python dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt
-
-      - name: Install Playwright Chromium
-        run: python -m playwright install --with-deps chromium
-
-      - name: Run tests
-        run: python -m pytest -q
-
-      - name: Upload Allure results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
+          run_id: ${{ github.event.workflow_run.id }}
           name: allure-results
-          path: allure-results/
-          if-no-files-found: warn
-
-      - name: Upload JUnit report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: junit-report
-          path: junit.xml
-          if-no-files-found: warn
+          path: allure-results
 
       - name: Checkout gh-pages for Allure history
-        if: github.event_name != 'pull_request'
         continue-on-error: true
         uses: actions/checkout@v4
         with:
@@ -63,7 +31,6 @@ jobs:
           path: gh-pages
 
       - name: Restore Allure history
-        if: github.event_name != 'pull_request'
         run: |
           if [ -d gh-pages/history ]; then
             mkdir -p allure-results/history
@@ -71,26 +38,21 @@ jobs:
           fi
 
       - name: Setup Java
-        if: github.event_name != 'pull_request'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Install Allure CLI
-        if: github.event_name != 'pull_request'
         run: npm install -g allure-commandline
 
       - name: Generate Allure report
-        if: github.event_name != 'pull_request'
         run: allure generate allure-results --clean -o allure-report
 
       - name: Prepare report timestamp
-        if: github.event_name != 'pull_request'
         run: echo "REPORT_STAMP=$(date -u +'%Y-%m-%d_%H-%M-%S_UTC')" >> "$GITHUB_ENV"
 
       - name: Deploy latest report to gh-pages
-        if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -98,7 +60,6 @@ jobs:
           publish_dir: ./allure-report
 
       - name: Deploy archived report to allure-report-history
-        if: github.event_name != 'pull_request'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
