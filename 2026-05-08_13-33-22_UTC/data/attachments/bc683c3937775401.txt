@@ -1,0 +1,1 @@
+{'id': '83ed4e9a-fc5f-449e-944e-9c57a85793cf', 'name': 'QA Pytest', 'email': 'qa-pytest@example.ru', 'role': 'viewer', 'created_at': '2026-05-08T13:32:31.671Z', 'updated_at': '2026-05-08T13:32:31.671Z'}
