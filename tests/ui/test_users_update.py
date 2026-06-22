@@ -3,7 +3,7 @@ import pytest
 from playwright.sync_api import expect
 
 from tests.conftest import UI_EPIC, UI_FEATURE, attach_locator_screenshot, expect_response_status
-from tests.ui.locators import PATCH_NAME_LABEL, PATCH_USER_BUTTON, method_button
+from tests.ui.locators import PATCH_NAME_LABEL, PATCH_USER_BUTTON, method_button, put_patch_section
 
 
 pytestmark = pytest.mark.ui
@@ -19,7 +19,7 @@ def test_patch_user_updates_name(lesson_page, create_user_via_ui):
     create_user_via_ui(name="Before Patch", email="before-patch@example.ru", role="viewer")
 
     with allure.step("Ввести новое имя для PATCH"):
-        lesson_page.get_by_label(PATCH_NAME_LABEL).fill("After Patch")
+        put_patch_section(lesson_page).get_by_label(PATCH_NAME_LABEL).fill("After Patch")
 
     with allure.step("Нажать PATCH /users/{id}"):
         with lesson_page.expect_response(lambda response: "/api/course/v1/http-lab/users/" in response.url):
