@@ -201,7 +201,7 @@ tests/
 
 Триггер:
 
-- `workflow_run` после успешного `Main Regression`
+- `workflow_run` после завершения `Main Regression` (включая падение тестов)
 
 Что делает:
 
