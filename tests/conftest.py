@@ -9,6 +9,8 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from playwright.sync_api import expect
 
+from tests.ui.locators import USER_EMAIL_LABEL, USER_NAME_LABEL, USER_ROLE_LABEL, post_section
+
 
 API_EPIC = "AIQA"
 API_FEATURE = "Урок 4: API HTTP-тренажера"
@@ -155,9 +157,10 @@ def create_user_via_ui(lesson_page):
     def _create_user(name="UI Autotest", email=None, role="viewer"):
         email = email or f"ui-{uuid.uuid4()}@example.ru"
         with allure.step("Ввести данные пользователя"):
-            lesson_page.get_by_label("name *").fill(name)
-            lesson_page.get_by_label("email *").fill(email)
-            lesson_page.get_by_label("role").select_option(role)
+            section = post_section(lesson_page)
+            section.get_by_label(USER_NAME_LABEL).fill(name)
+            section.get_by_label(USER_EMAIL_LABEL).fill(email)
+            section.get_by_label(USER_ROLE_LABEL).select_option(role)
         with allure.step("Нажать POST /users"):
             with lesson_page.expect_response(
                 lambda response: response.url.endswith("/api/course/v1/http-lab/users")

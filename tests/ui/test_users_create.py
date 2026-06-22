@@ -15,7 +15,9 @@ from tests.ui.locators import (
     USER_ID_LABEL,
     USER_NAME_LABEL,
     USER_ROLE_LABEL,
+    get_section,
     method_button,
+    post_section,
 )
 
 
@@ -32,9 +34,10 @@ pytestmark = pytest.mark.ui
 )
 def test_post_user_autofills_id_and_enables_crud_buttons(lesson_page):
     with allure.step("Ввести данные пользователя"):
-        lesson_page.get_by_label(USER_NAME_LABEL).fill("UI Autotest")
-        lesson_page.get_by_label(USER_EMAIL_LABEL).fill("ui-autotest@example.ru")
-        lesson_page.get_by_label(USER_ROLE_LABEL).select_option("editor")
+        section = post_section(lesson_page)
+        section.get_by_label(USER_NAME_LABEL).fill("UI Autotest")
+        section.get_by_label(USER_EMAIL_LABEL).fill("ui-autotest@example.ru")
+        section.get_by_label(USER_ROLE_LABEL).select_option("editor")
 
     with allure.step("Нажать POST /users"):
         with lesson_page.expect_response(lambda response: response.url.endswith("/api/course/v1/http-lab/users")):
@@ -45,7 +48,7 @@ def test_post_user_autofills_id_and_enables_crud_buttons(lesson_page):
         expect(panel).to_contain_text('"name": "UI Autotest"')
         expect(panel).to_contain_text('"role": "editor"')
 
-        user_id_input = lesson_page.get_by_label(USER_ID_LABEL)
+        user_id_input = get_section(lesson_page).get_by_label(USER_ID_LABEL)
         expect(user_id_input).to_have_value(re.compile(r"[0-9a-f-]{36}"))
         expect(method_button(lesson_page, GET_USER_BY_ID_BUTTON)).to_be_enabled()
         expect(method_button(lesson_page, PUT_USER_BUTTON)).to_be_enabled()
