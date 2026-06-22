@@ -1,0 +1,1 @@
+{'status': 500, 'title': 'Internal Server Error', 'description': 'Необработанная ошибка на сервере. Что-то пошло не так в коде или инфраструктуре.', 'qa_note': 'Критический баг. Собирай: request body, response body, заголовки, логи — всё в баг-репорт.', 'category': '5xx — Ошибка сервера'}
